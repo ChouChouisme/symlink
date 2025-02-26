@@ -4,15 +4,15 @@
 # file: nested_inference.sh
 #
 
-REPO_PATH=/home/leesm/Project/semeval2022_ner
+REPO_PATH=/data0/wxl/symlink/NER
 export PYTHONPATH="$PYTHONPATH:$REPO_PATH"
 
 DATA_SIGN=semeval
-DATA_DIR=/home/leesm/Project/semeval2022_ner/data/semeval
-BERT_DIR=/home/leesm/Project/semeval2022_ner
+DATA_DIR=/data0/wxl/symlink/NER/data/semeval
+BERT_DIR=/data0/wxl/symlink/NER
 MAX_LEN=512
-MODEL_CKPT=/home/leesm/Project/semeval2022_ner/output/bioprocess_sci_uncased/epoch=304.ckpt
-HPARAMS_FILE=/home/leesm/Project/semeval2022_ner/output/bioprocess_sci_uncased/lightning_logs/version_1/hparams.yaml
+MODEL_CKPT=/data0/wxl/symlink/output/ner/epoch=304.ckpt
+HPARAMS_FILE=/data0/wxl/symlink/output/ner/lightning_logs/version_1/hparams.yaml
 
 
 python3 ${REPO_PATH}/inference/mrc_ner_inference.py \

@@ -268,3 +268,5 @@ dmypy.json
 cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/linux,pycharm,python
+
+output
