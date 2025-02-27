@@ -19,7 +19,7 @@ pip install -r ./NER/requirements.txt
 pip install -r ./RE/requirements.txt
 ```
 
-2. Infer
+2. Inference
 ```console
 bash infer.sh
 ```
