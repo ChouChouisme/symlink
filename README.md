@@ -30,10 +30,6 @@ https://drive.google.com/file/d/1SFm791Z7KW0GAZ45PyIak5xsL_LdVFOb/view?usp=shari
 ## References
 * [mrc-for-flat-nested-ner](https://github.com/ShannonAI/mrc-for-flat-nested-ner)
 
-## Q&A
-If you encounter any problem, leave an issue in the github repo.
-
-
 ## Citation
 ```bibtex
 
