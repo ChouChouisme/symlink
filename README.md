@@ -19,22 +19,9 @@ pip install -r ./NER/requirements.txt
 pip install -r ./RE/requirements.txt
 ```
 
-3. Entity model(Train, infer)
+2. Infer
 ```console
-bash ./NER/scripts/mrc_ner/reproduce/semeval.sh
-bash ./NER/scripts/mrc_ner/nested_inference.sh
-```
-
-3. Relation model(Train, infer, ensemble and post-process)
-```console
-bash ./RE/run.sh base [bsz]
-python ./RE/inference.py
-python ./RE/get_ensemble_result.py
-```
-
-4. Make submission
-```console
-python ./make_result/make_result.py
+bash infer.sh
 ```
 
 ## Model Checkpoint

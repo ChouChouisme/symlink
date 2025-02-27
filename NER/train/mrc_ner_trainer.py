@@ -44,12 +44,12 @@ class BertLabeling(pl.LightningModule):
         if isinstance(args, argparse.Namespace):
             self.save_hyperparameters(args)
             self.args = args
-            logging.basicConfig(format=format, filename=os.path.join(self.args.default_root_dir, "eval_result_log.txt"), level=logging.INFO)
+            logging.basicConfig(format=format, filename="/data0/wxl/symlink/NER/logs/eval_result_log.txt", level=logging.INFO)
         else:
             # eval mode
             TmpArgs = namedtuple("tmp_args", field_names=list(args.keys()))
             self.args = args = TmpArgs(**args)
-            logging.basicConfig(format=format, filename=os.path.join(self.args.default_root_dir, "eval_test.txt"), level=logging.INFO)
+            logging.basicConfig(format=format, filename="/data0/wxl/symlink/NER/logs/eval_test.txt", level=logging.INFO)
 
         self.bert_dir = args.bert_config_dir
         self.data_dir = self.args.data_dir

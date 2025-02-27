@@ -17,7 +17,7 @@ from transformers import BertTokenizerFast
 import tqdm
 
 def get_dataloader(config, data_prefix="test"):
-    data_path = os.path.join(config.data_dir, f"mrc-ner.{data_prefix}")
+    data_path = config.data_dir
 
     tokenizer = BertTokenizerFast.from_pretrained("allenai/scibert_scivocab_uncased")
     tokenizer.add_special_tokens({'additional_special_tokens': ['[unused10]']})
@@ -26,8 +26,7 @@ def get_dataloader(config, data_prefix="test"):
                             max_length=config.max_length,
                             is_chinese=config.is_chinese,
                             pad_to_maxlen=False,
-                            mode=data_prefix,
-                            data_dir=config.data_dir
+                            mode=data_prefix
                             )
 
     dataloader = DataLoader(dataset=dataset, batch_size=1, shuffle=False)
@@ -42,6 +41,7 @@ def get_query_index_to_label_cate(dataset_sign):
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="inference the model output.")
     parser.add_argument("--data_dir", type=str, required=True)
+    parser.add_argument("--output_dir", type=str, required=True)
     parser.add_argument("--bert_dir", type=str, required=True)
     parser.add_argument("--max_length", type=int, default=256)
     parser.add_argument("--is_chinese", action="store_true")
@@ -66,7 +66,7 @@ def main():
 
     data_loader, data_tokenizer = get_dataloader(args,)
     
-    test_data_dic = json.load(open(os.path.join(args.data_dir, f"mrc-ner.test"), encoding="utf-8"))
+    test_data_dic = json.load(open(args.data_dir, encoding="utf-8"))
     
     for id in test_data_dic:
         test_data_dic[id]['entity'] = {}
@@ -133,8 +133,27 @@ def main():
         # print(f"Given input: {readable_input_str}")
         # print(f"Model predict: {entity_lst}")
         # print(f"Model predict [CHAR]: {entity_char_lst}")
-    
-    with open('./mrc-ner.test.ner_result', 'w', encoding='utf-8') as make_file:
+            
+    for doc_id in test_data_dic:
+        if test_data_dic[doc_id]['topic'] == 'q_bio.qm':
+            text = test_data_dic[doc_id]['text']
+            for e_id in test_data_dic[doc_id]['entity']:
+                
+                if test_data_dic[doc_id]['entity'][e_id]['label'] != 'SYMBOL':
+                    continue
+                
+                s = test_data_dic[doc_id]['entity'][e_id]['start']
+                e = test_data_dic[doc_id]['entity'][e_id]['end']
+                                        
+                if text[s-1] == '$':
+                    test_data_dic[doc_id]['entity'][e_id]['start'] -= 1
+                if text[e] == '$':
+                    test_data_dic[doc_id]['entity'][e_id]['end'] += 1
+                
+                test_data_dic[doc_id]['entity'][e_id]['text'] = text[test_data_dic[doc_id]['entity'][e_id]['start']:test_data_dic[doc_id]['entity'][e_id]['end']]
+                
+    with open(args.output_dir, 'w', encoding='utf-8') as make_file:
         json.dump(test_data_dic, make_file, indent="\t")
+
 if __name__ == "__main__":
     main()
