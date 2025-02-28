@@ -15,8 +15,7 @@ Code for "JBNU-CCLab at SemEval-2022 Task 12: Machine Reading Comprehension and 
 
 1. Environment Setting
 ```console
-pip install -r ./NER/requirements.txt
-pip install -r ./RE/requirements.txt
+conda env create -f environment.yml
 ```
 
 2. Inference
