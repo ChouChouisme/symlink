@@ -135,22 +135,21 @@ def main():
         # print(f"Model predict [CHAR]: {entity_char_lst}")
             
     for doc_id in test_data_dic:
-        if test_data_dic[doc_id]['topic'] == 'q_bio.qm':
-            text = test_data_dic[doc_id]['text']
-            for e_id in test_data_dic[doc_id]['entity']:
-                
-                if test_data_dic[doc_id]['entity'][e_id]['label'] != 'SYMBOL':
-                    continue
-                
-                s = test_data_dic[doc_id]['entity'][e_id]['start']
-                e = test_data_dic[doc_id]['entity'][e_id]['end']
-                                        
-                if text[s-1] == '$':
-                    test_data_dic[doc_id]['entity'][e_id]['start'] -= 1
-                if text[e] == '$':
-                    test_data_dic[doc_id]['entity'][e_id]['end'] += 1
-                
-                test_data_dic[doc_id]['entity'][e_id]['text'] = text[test_data_dic[doc_id]['entity'][e_id]['start']:test_data_dic[doc_id]['entity'][e_id]['end']]
+        text = test_data_dic[doc_id]['text']
+        for e_id in test_data_dic[doc_id]['entity']:
+            
+            if test_data_dic[doc_id]['entity'][e_id]['label'] != 'SYMBOL':
+                continue
+            
+            s = test_data_dic[doc_id]['entity'][e_id]['start']
+            e = test_data_dic[doc_id]['entity'][e_id]['end']
+                                    
+            if text[s-1] == '$':
+                test_data_dic[doc_id]['entity'][e_id]['start'] -= 1
+            if text[e] == '$':
+                test_data_dic[doc_id]['entity'][e_id]['end'] += 1
+            
+            test_data_dic[doc_id]['entity'][e_id]['text'] = text[test_data_dic[doc_id]['entity'][e_id]['start']:test_data_dic[doc_id]['entity'][e_id]['end']]
                 
     with open(args.output_dir, 'w', encoding='utf-8') as make_file:
         json.dump(test_data_dic, make_file, indent="\t")

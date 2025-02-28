@@ -1,6 +1,6 @@
 __pycache__
 model
 NER/logs
-NER/data/output
 RE/result
 test.ipynb
+NER/data
