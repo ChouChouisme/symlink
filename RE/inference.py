@@ -1,3 +1,4 @@
+import os
 import torch.nn.functional as F
 import torch
 import json
@@ -13,6 +14,7 @@ def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="inference the model output.")
     parser.add_argument("--data_dir", type=str, required=True)
     parser.add_argument("--output_dir", type=str, required=True)
+    parser.add_argument("--file_name", type=str, required=True)
 
     return parser
 
@@ -117,15 +119,15 @@ def evaluation(best_model_path, corpus_path, seq_len=512, batch_size=200, device
                             result_dict[predicted_doc_num[i]].append({"label": label, "arg0": e1, "arg1": e2})        
     return result_dict
 
-
 if __name__ == '__main__':
     parser = get_parser()
     args = parser.parse_args()
 
-    device = 'cuda:1'
+    device = 'cuda:4'
     best_model_path = '/data0/wxl/symlink/model/re/20400_95.44_332_scibert_uncased'
     corpus_path = args.data_dir
     result_path = args.output_dir
+    file_name = args.file_name
     model_name = 'scibert_uncased'
     seq_len = 512
     batch_size = 200
@@ -152,59 +154,6 @@ if __name__ == '__main__':
             relation['rid'] = 'R'+str(rid+1)
             all_data[doc_id]['relation']['R'+str(rid+1)] = relation
 
-    # ensemble
-    result_file_list = []
-    answers_list = []
-
-    result_file_list.append(all_data)
-    
-    model_len = len(result_file_list)
-    
-    for result_file in result_file_list:
-        answers = []
-        for doc_name in result_file:
-            rel_ans = []
-            rels = result_file[doc_name]['relation']
-            for rel_name in result_file[doc_name]['relation']:
-                e1 = rels[rel_name]['arg0']
-                e2 = rels[rel_name]['arg1']
-                rel = rels[rel_name]['label']
-                
-                rel_str = rel+'_'+e1+'_'+e2               
-                rel_ans.append(rel_str)
-
-            answers.append(rel_ans)
-        answers_list.append(answers)
-        
-    final_re_result = []
-        
-    for i in range(len(all_data)):
-        answer_sum=[]
-        for answers in answers_list:
-            answer_sum += answers[i]
-        counter = Counter(answer_sum)
-        
-        re_result_li = []
-        
-        for r in counter:
-            if counter[r] > 0:#model_len / 2:
-                re_result_li.append(r)
-
-        
-        ans_dict = {}
-        for i, rel in enumerate(re_result_li):
-            ans_rel = rel.split('_')
-            ans_dict['R'+str(i+1)] = {'label':ans_rel[0], 'arg0':ans_rel[1], 'arg1':ans_rel[2], 'rid':'R'+str(i+1)} 
-        final_re_result.append(ans_dict)
-            
-    
-    ensemble_result = all_data
-    
-    for i, doc_name in enumerate(ensemble_result):
-        rel_ans = []
-        ensemble_result[doc_name]['relation'] = final_re_result[i]
-        
-        
     def exclude_not_related_entities(result):
         result_temp = result
         
@@ -260,21 +209,21 @@ if __name__ == '__main__':
                     del result[doc_name]['relation'][rel_name]                 
 
                     temp_flag = False
-                    for i, corefer_sym in enumerate(corefer_desc_li):
-                        if arg0 in corefer_sym:
-                            if arg1 not in corefer_sym:
+                    for i, corefer_desc in enumerate(corefer_desc_li):
+                        if arg0 in corefer_desc:
+                            if arg1 not in corefer_desc:
                                 corefer_desc_li[i].append(arg1)
                                 
                             temp_flag = True
                             break
-                        elif arg1 in corefer_sym:
+                        elif arg1 in corefer_desc:
                             corefer_desc_li[i].append(arg0)
                             temp_flag = True
                             break
                     if temp_flag:
                         continue
                     else:
-                        corefer_desc_li.append([arg0, arg1])                        
+                        corefer_desc_li.append([arg0, arg1])
                         
             temp_counter = 0
             for corefer_syms in corefer_sym_li:
@@ -291,11 +240,124 @@ if __name__ == '__main__':
                     temp_counter += 1            
                               
         return result
-        
+    
+    all_data = exclude_not_related_entities(all_data)
+    all_data = postpro_corefer_relations(all_data)
+    
+    answers = set()
+    for doc_name in all_data:
+        ents = all_data[doc_name]['entity']
+        rels = all_data[doc_name]['relation']
+        for rel_name in all_data[doc_name]['relation']:
+            e1id = rels[rel_name]['arg0']
+            e2id = rels[rel_name]['arg1']
+            rel = {
+                "label1": ents[e1id]['label'],
+                "text1": ents[e1id]['text'],
+                "label2": ents[e2id]['label'],
+                "text2": ents[e2id]['text'],
+                "label": rels[rel_name]['label']
+            }
+            answers.add(tuple(rel.items()))
+    
+    entities = {}
+    relations = []
 
-    ensemble_result = exclude_not_related_entities(ensemble_result)
-    ensemble_result = postpro_corefer_relations(ensemble_result)
+    for ans in answers:
+        answer = dict(ans)
+        ent1 = {
+            "label": answer['label1'],
+            "text": answer['text1']
+        }
+        ent2 = {
+            "label": answer['label2'],
+            "text": answer['text2']
+        }
+        
+        if ent1 == ent2:
+            continue
+        
+        if ent1 not in entities.values():
+            eid1 = f"T{len(entities)+1}"
+            entities[eid1] = ent1
+        else:
+            eid1 = next(eid for eid, entity in entities.items() if entity == ent1)
+
+        if ent2 not in entities.values():
+            eid2 = f"T{len(entities)+1}"
+            entities[eid2] = ent2
+        else:
+            eid2 = next(eid for eid, entity in entities.items() if entity == ent2)
+
+        answer['arg0'] = eid1
+        answer['arg1'] = eid2
+        relations.append(answer)
     
+    with open(os.path.join(result_path, f"{file_name}.json"), 'w', encoding='utf-8') as make_file:
+        json.dump({"entity": entities, "relation": relations}, make_file, indent="\t")
     
-    with open(result_path, 'w', encoding='utf-8') as make_file:
-        json.dump(ensemble_result, make_file, indent="\t")
+    corefer_sym_li = []
+    corefer_desc_li = []
+    
+    for rel in relations:
+        arg0 = rel['arg0']
+        arg1 = rel['arg1']
+        
+        if rel['label'] == 'Corefer-Symbol':
+            temp_flag = False
+            for i, corefer_sym in enumerate(corefer_sym_li):
+                if arg0 in corefer_sym:
+                    if arg1 not in corefer_sym:
+                        corefer_sym_li[i].append(arg1)
+                        
+                    temp_flag = True
+                    break
+                elif arg1 in corefer_sym:
+                    corefer_sym_li[i].append(arg0)
+                    temp_flag = True
+                    break
+            if temp_flag:
+                continue
+            else:
+                corefer_sym_li.append([arg0, arg1])
+        elif rel['label'] == 'Corefer-Description':
+            temp_flag = False
+            for i, corefer_desc in enumerate(corefer_desc_li):
+                if arg0 in corefer_desc:
+                    if arg1 not in corefer_desc:
+                        corefer_desc_li[i].append(arg1)
+                        
+                    temp_flag = True
+                    break
+                elif arg1 in corefer_desc:
+                    corefer_desc_li[i].append(arg0)
+                    temp_flag = True
+                    break
+            if temp_flag:
+                continue
+            else:
+                corefer_desc_li.append([arg0, arg1])
+
+    symbol_dict = {}
+    for rel in relations:
+        if rel["label"]=="Direct":
+            arg0 = rel["arg0"]
+            arg1 = rel["arg1"]
+            now_corefer_desc = [arg0]
+            now_corefer_sym = [arg1]
+            for corefer_desc in corefer_desc_li:
+                if arg0 in corefer_desc:
+                    now_corefer_desc = corefer_desc
+            for corefer_sym in corefer_sym_li:
+                if arg1 in corefer_sym:
+                    now_corefer_sym = corefer_sym
+            ndesc = [entities[ent]["text"] for ent in now_corefer_desc]
+            nsym = [entities[ent]["text"] for ent in now_corefer_sym]
+            for sym in nsym:
+                if sym not in symbol_dict:
+                    symbol_dict[sym] = ndesc
+                else:
+                    symbol_dict[sym] = list(set(symbol_dict[sym] + ndesc))
+
+    with open(os.path.join(result_path, f"{file_name}_dict.json"), 'w', encoding='utf-8') as make_file:
+        json.dump(symbol_dict, make_file, indent="\t")

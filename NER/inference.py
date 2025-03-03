@@ -143,12 +143,48 @@ def main():
             
             s = test_data_dic[doc_id]['entity'][e_id]['start']
             e = test_data_dic[doc_id]['entity'][e_id]['end']
-                                    
-            if text[s-1] == '$':
-                test_data_dic[doc_id]['entity'][e_id]['start'] -= 1
-            if text[e] == '$':
-                test_data_dic[doc_id]['entity'][e_id]['end'] += 1
             
+            def safe_get(arr, index, default=''):
+                try:
+                    return arr[index]
+                except IndexError:
+                    return default
+            
+            if safe_get(text, s) == '$':
+                test_data_dic[doc_id]['entity'][e_id]['start'] += 1
+            if safe_get(text, e-1) == '$':
+                test_data_dic[doc_id]['entity'][e_id]['end'] -= 1
+            if safe_get(text, s-1) == '\\' and (safe_get(text, s) == '(' or safe_get(text, s) == '['):
+                test_data_dic[doc_id]['entity'][e_id]['start'] += 1
+            if safe_get(text, s) == '\\' and (safe_get(text, s+1) == '(' or safe_get(text, s+1) == '['):
+                test_data_dic[doc_id]['entity'][e_id]['start'] += 2
+            if safe_get(text, e-2) == '\\' and (safe_get(text, e-1) == ')' or safe_get(text, e-1) == ']'):
+                test_data_dic[doc_id]['entity'][e_id]['end'] -= 2
+            if safe_get(text, e-1) == '\\' and (safe_get(text, e) == ')' or safe_get(text, e) == ']'):
+                test_data_dic[doc_id]['entity'][e_id]['end'] -= 1
+            
+            s = test_data_dic[doc_id]['entity'][e_id]['start']
+            e = test_data_dic[doc_id]['entity'][e_id]['end']
+            
+            substring = text[s:e]
+            
+            open_brackets = substring.count('{')
+            close_brackets = substring.count('}')
+            
+            while open_brackets > close_brackets and e < len(text):
+                e += 1
+                substring = text[s:e]
+                open_brackets = substring.count('{')
+                close_brackets = substring.count('}')
+            
+            while close_brackets > open_brackets and s > 0:
+                s -= 1
+                substring = text[s:e]
+                open_brackets = substring.count('{')
+                close_brackets = substring.count('}')
+            
+            test_data_dic[doc_id]['entity'][e_id]['start'] = s
+            test_data_dic[doc_id]['entity'][e_id]['end'] = e
             test_data_dic[doc_id]['entity'][e_id]['text'] = text[test_data_dic[doc_id]['entity'][e_id]['start']:test_data_dic[doc_id]['entity'][e_id]['end']]
                 
     with open(args.output_dir, 'w', encoding='utf-8') as make_file:
